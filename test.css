@@ -6,32 +6,47 @@ html {
 }
 
 #app {
-	display: flex;
-	flex-direction: column;
 	margin: 10vh auto;
 	width: 70%;
 	background-color: #fff;
+	padding: 1em;
+	border-radius: 0.25em;
 }
 
-#app > div {
+.grid {
+	display: flex;
+	flex-direction: column;
+}
+
+.grid > div {
 	display: flex;
 	flex-direction: row;
 }
 
-#app > div > div {
+.grid > div > .cell {
 	width: 2em;
 	height: 2em;
-	outline: 1px solid black;
+	border: 1px solid #999;
+	color: transparent;
+	background-color: #eee;
 }
 
-#app > div > div.wall {
-	background-color: #999;
+.grid > div > .cell.wall {
+	background-color: #bbb;
 }
 
-#app > div > div.path {
-	background-color: yellow;
+.grid > div > .cell.path {
+	background-color: #ffef82;
 }
 
-#app > div > div.wall.path {
+.grid > div > .cell.wall.path { /* probably not needed */
 	background-color: red;
+}
+
+.grid > div > .cell.start {
+	background-color: pink;
+}
+
+.grid > div > .cell.end {
+	background-color: #7adb7a;
 }

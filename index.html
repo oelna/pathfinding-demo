@@ -13,10 +13,13 @@
 <body>
 
 	<div id="app">
-		<div v-for="(row, index) in grid">
-			<div v-bind:id="'c-'+index2+'-'+index" v-for="(cell, index2) in row" v-bind:class="(cell == 1) ? 'wall' : ''" v-on:click="act(index2, index)">{{ cell }}</div>
+		<div class="grid">
+			<div v-for="(row, index) in grid">
+				<div v-bind:id="'c-'+index2+'-'+index" class="cell" v-for="(cell, index2) in row" v-bind:class="(cell == 1) ? 'wall' : ''" v-on:click="act(index2, index)">{{ cell }}</div>
+			</div>
 		</div>
 
+		<button v-on:click="generateGrid">Regenerate Grid</button>
 		<button v-on:click="findPath">Find Path</button>
 	</div>
 

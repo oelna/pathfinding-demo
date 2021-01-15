@@ -4,11 +4,7 @@ const game = new Vue({
 	'data': {
 		'gridWidth': 9,
 		'gridHeight': 9,
-		'grid': [
-			[0, 0, 0, 1, 0],
-		    [1, 0, 0, 0, 1],
-		    [0, 0, 1, 0, 0]
-		],
+		'grid': [],
 		'PFgrid': null,
 		'PFfinder': null,
 		'start': null,
@@ -16,36 +12,51 @@ const game = new Vue({
 	},
 	'created': function () {
 
-		this.grid = [];
-
-		const rows = [];
-		for (let i = 0; i < this.gridHeight; i++) {
-			const row = [];
-			for (let ii = 0; ii < this.gridWidth; ii++) {
-				const cell = (Math.random()>=0.8)? 1 : 0;
-				row.push(cell);
-			}
-			rows.push(row);
-		}
-		this.grid = rows;
-
-		this.PFgrid = new PF.Grid(this.gridWidth, this.gridHeight);
-
-		//this.PFgrid.setWalkableAt(0, 0, true);
-		//this.PFgrid.setWalkableAt(this.gridWidth, this.gridHeight, true);
-
-		//this.PFgrid = new PF.Grid(this.grid);
-		// grid.setWalkableAt(0, 1, false);
+		this.generateGrid(null, this.gridWidth, this.gridHeight);
 
 		this.PFfinder = new PF.AStarFinder({
 			allowDiagonal: false
 		});
 
-		console.log('init', this.PFgrid, this.PFfinder);
+		console.log('init');
 	},
 	'methods': {
+		'generateGrid': function (event, width, height) {
+			if (!width) width = 9;
+			if (!height) height = 9;
+
+			console.log('regenerate grid', width, height);
+
+			this.grid = [];
+			this.PFgrid = null;
+
+			const rows = [];
+			for (let i = 0; i < height; i++) {
+				const row = [];
+				for (let ii = 0; ii < width; ii++) {
+					let cell = (Math.random()>=0.8)? 1 : 0;
+					// cell = 0;
+					row.push(cell);
+				}
+				rows.push(row);
+			}
+
+			this.grid = rows;
+
+			// clear some points
+			this.grid[0][0] = 0;
+			this.grid[width-1][height-1] = 0;
+
+			this.PFgrid = new PF.Grid(this.grid);
+
+			// this.PFgrid.setWalkableAt(0, 0, true);
+			// this.PFgrid.setWalkableAt(this.gridWidth-1, this.gridHeight-1, true);
+
+			this.clearPath();
+		},
 		'findPath': function (x1, y1, x2, y2) {
 			if (this.start == null || this.end == null) {
+				console.error('you must define a start and end point!');
 				return;
 			}
 			const gridClone = this.PFgrid.clone();
@@ -54,9 +65,21 @@ const game = new Vue({
 			// console.log('path', path);
 			for (var i = 0; i < path.length; i++) {
 				let node = document.querySelector('#c-'+path[i][0]+'-'+path[i][1]);
-				console.log(node);
 				node.classList.add('path');
 			}
+		},
+		'clearPath': function () {
+			if (!this.$el) return;
+			this.start = null;
+			this.end = null;
+
+			const cells = this.$el.querySelectorAll('.cell');
+			for (cell of cells) {
+				cell.classList.remove('path');
+				cell.classList.remove('end');
+				cell.classList.remove('start');
+			}
+			console.log('cleared path');
 		},
 		'setStart': function (x, y) {
 			console.log('selected start', x, y);
@@ -67,10 +90,18 @@ const game = new Vue({
 			this.end = [x, y];
 		},
 		'act': function (x, y) {
+
+			if (this.start !== null && this.end !== null) {
+				// clear path and start new
+				this.clearPath();
+			}
+
 			if (this.start == null) {
 				this.setStart(x, y);
+				this.$el.querySelector('#c-'+x+'-'+y).classList.add('start');
 			} else {
 				this.setEnd(x, y);
+				this.$el.querySelector('#c-'+x+'-'+y).classList.add('end');
 			}
 		}
 	}
