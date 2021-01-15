@@ -1,0 +1,37 @@
+
+html {
+	font: 150%/1.4 -system-ui, Helvetica, sans-serif;
+	color: #000;
+	background-color: #ddd;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	margin: 10vh auto;
+	width: 70%;
+	background-color: #fff;
+}
+
+#app > div {
+	display: flex;
+	flex-direction: row;
+}
+
+#app > div > div {
+	width: 2em;
+	height: 2em;
+	outline: 1px solid black;
+}
+
+#app > div > div.wall {
+	background-color: #999;
+}
+
+#app > div > div.path {
+	background-color: yellow;
+}
+
+#app > div > div.wall.path {
+	background-color: red;
+}
