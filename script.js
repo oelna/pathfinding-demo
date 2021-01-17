@@ -1,3 +1,4 @@
+'use strict';
 
 const Tile = class {
 	constructor(params) {
@@ -5,6 +6,7 @@ const Tile = class {
 		this.y = (params && params.y !== undefined) ? params.y : null;
 		this.x = (params && params.x !== undefined) ? params.x : null;
 		this.type = (params && params.type !== undefined) ? params.type : 'ground';
+		
 		this.isStart = null;
 		this.isEnd = null;
 		this.isPath = null;
@@ -34,24 +36,14 @@ const game = new Vue({
 	},
 	'methods': {
 		'matrixFromTiles': function (grid) {
-			if (!grid) return;
+			if (!grid) return [];
 			
-			// todo: this could probably be an easy map!
-			const matrix = [];
-			for (const row of grid) {
-				const matrixRow = [];
-				for (const cell of row) {
-					matrixRow.push(cell.walkable ? 0 : 1);
-				}
-				matrix.push(matrixRow);
-			}
-			/*
-			grid.map(function (row) {
-				const row = 
-				return [];
+			const matrix = grid.map(function (row) {
+				const cells = row.map(function (cell) {
+					return cell.walkable ? 0 : 1;
+				});
+				return cells;
 			});
-			const matrix = grid.map(x => x * 2);
-			*/
 
 			return matrix;
 		},
