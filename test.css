@@ -23,7 +23,7 @@ html {
 	flex-direction: row;
 }
 
-.grid > div > .cell {
+.grid > div > .tile {
 	width: 2em;
 	height: 2em;
 	border: 1px solid #999;
@@ -31,22 +31,22 @@ html {
 	background-color: #eee;
 }
 
-.grid > div > .cell.wall {
+.grid > div > .tile.wall {
 	background-color: #bbb;
 }
 
-.grid > div > .cell.path {
+.grid > div > .tile.path {
 	background-color: #ffef82;
 }
 
-.grid > div > .cell.wall.path { /* probably not needed */
+.grid > div > .tile.wall.path { /* probably not needed */
 	background-color: red;
 }
 
-.grid > div > .cell.start {
+.grid > div > .tile.start {
 	background-color: pink;
 }
 
-.grid > div > .cell.end {
+.grid > div > .tile.end {
 	background-color: #7adb7a;
 }

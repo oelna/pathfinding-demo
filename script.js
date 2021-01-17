@@ -1,4 +1,16 @@
 
+const Tile = class {
+	constructor(params) {
+		this.walkable = (params && params.walkable !== undefined) ? !!params.walkable : true;
+		this.y = (params && params.y !== undefined) ? params.y : null;
+		this.x = (params && params.x !== undefined) ? params.x : null;
+		this.type = (params && params.type !== undefined) ? params.type : 'ground';
+		this.isStart = null;
+		this.isEnd = null;
+		this.isPath = null;
+	}
+};
+
 const game = new Vue({
 	'el': '#app',
 	'data': {
@@ -15,12 +27,34 @@ const game = new Vue({
 		this.generateGrid(null, this.gridWidth, this.gridHeight);
 
 		this.PFfinder = new PF.AStarFinder({
-			allowDiagonal: false
+			'allowDiagonal': false
 		});
 
 		console.log('init');
 	},
 	'methods': {
+		'matrixFromTiles': function (grid) {
+			if (!grid) return;
+			
+			// todo: this could probably be an easy map!
+			const matrix = [];
+			for (const row of grid) {
+				const matrixRow = [];
+				for (const cell of row) {
+					matrixRow.push(cell.walkable ? 0 : 1);
+				}
+				matrix.push(matrixRow);
+			}
+			/*
+			grid.map(function (row) {
+				const row = 
+				return [];
+			});
+			const matrix = grid.map(x => x * 2);
+			*/
+
+			return matrix;
+		},
 		'generateGrid': function (event, width, height) {
 			if (!width) width = 9;
 			if (!height) height = 9;
@@ -34,8 +68,14 @@ const game = new Vue({
 			for (let i = 0; i < height; i++) {
 				const row = [];
 				for (let ii = 0; ii < width; ii++) {
-					let cell = (Math.random()>=0.8)? 1 : 0;
-					// cell = 0;
+					const walkable = (Math.random()>=0.8) ? false : true;
+					let cell = new Tile({
+						'y': i,
+						'x': ii,
+						'walkable': walkable,
+						'type': walkable ? 'ground' : 'wall'
+					});
+
 					row.push(cell);
 				}
 				rows.push(row);
@@ -44,10 +84,11 @@ const game = new Vue({
 			this.grid = rows;
 
 			// clear some points
-			this.grid[0][0] = 0;
-			this.grid[width-1][height-1] = 0;
+			this.grid[0][0].walkable = true;
+			this.grid[width-1][height-1].walkable = true;
 
-			this.PFgrid = new PF.Grid(this.grid);
+			const matrix = this.matrixFromTiles(this.grid);
+			this.PFgrid = new PF.Grid(matrix);
 
 			// this.PFgrid.setWalkableAt(0, 0, true);
 			// this.PFgrid.setWalkableAt(this.gridWidth-1, this.gridHeight-1, true);
@@ -59,49 +100,61 @@ const game = new Vue({
 				console.error('you must define a start and end point!');
 				return;
 			}
-			const gridClone = this.PFgrid.clone();
 
-			const path = this.PFfinder.findPath(this.start[0], this.start[1], this.end[0], this.end[1], gridClone);
-			// console.log('path', path);
-			for (var i = 0; i < path.length; i++) {
-				let node = document.querySelector('#c-'+path[i][0]+'-'+path[i][1]);
-				node.classList.add('path');
+			// todo: use x and y params!
+			const gridClone = this.PFgrid.clone();
+			const path = this.PFfinder.findPath(this.start.x, this.start.y, this.end.x, this.end.y, gridClone);
+			
+			if (path.length > 0) {
+				for (var i = 0; i < path.length; i++) {
+					const tile = this.getTile(path[i][0], path[i][1]);
+					tile.isPath = true;
+
+					// const node = document.querySelector('#t-'+path[i][1]+'-'+path[i][0]);
+					// node.classList.add('path');
+				}
+			} else {
+				console.warn('could not calculate a path:', this.start, this.end);
 			}
 		},
 		'clearPath': function () {
 			if (!this.$el) return;
 			this.start = null;
-			this.end = null;
+			this.end = null; // todo: unify this into tile class
 
-			const cells = this.$el.querySelectorAll('.cell');
-			for (cell of cells) {
-				cell.classList.remove('path');
-				cell.classList.remove('end');
-				cell.classList.remove('start');
+			for (const row of this.grid) {
+				for (const cell of row) {
+					cell.isStart = false;
+					cell.isEnd = false;
+					cell.isPath = false;
+				}
 			}
 			console.log('cleared path');
 		},
-		'setStart': function (x, y) {
-			console.log('selected start', x, y);
-			this.start = [x, y];
+		'getTile': function (x, y) {
+			return this.grid[y][x];
 		},
-		'setEnd': function (x, y) {
-			console.log('selected end', x, y);
-			this.end = [x, y];
-		},
-		'act': function (x, y) {
-
+		'act': function (x, y, tile) {
+			// console.log('act on', tile);
 			if (this.start !== null && this.end !== null) {
 				// clear path and start new
 				this.clearPath();
 			}
+			if (!tile.walkable) {
+				console.warn('you must select a walkable tile');
+				return;
+			}
 
 			if (this.start == null) {
-				this.setStart(x, y);
-				this.$el.querySelector('#c-'+x+'-'+y).classList.add('start');
+				console.log('selected start', tile);
+				tile.isStart = true;
+				this.start = tile;
+				// this.$el.querySelector('#t-'+tile.y+'-'+tile.x).classList.add('start');
 			} else {
-				this.setEnd(x, y);
-				this.$el.querySelector('#c-'+x+'-'+y).classList.add('end');
+				console.log('selected end', tile);
+				tile.isEnd = true;
+				this.end = tile;
+				// this.$el.querySelector('#t-'+tile.y+'-'+tile.x).classList.add('end');
 			}
 		}
 	}

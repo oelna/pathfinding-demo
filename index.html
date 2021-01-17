@@ -15,7 +15,7 @@
 	<div id="app">
 		<div class="grid">
 			<div v-for="(row, index) in grid">
-				<div v-bind:id="'c-'+index2+'-'+index" class="cell" v-for="(cell, index2) in row" v-bind:class="(cell == 1) ? 'wall' : ''" v-on:click="act(index2, index)">{{ cell }}</div>
+				<div v-bind:id="'t-'+cell.y+'-'+cell.x" class="tile" v-for="(cell, index2) in row" v-bind:class="[cell.type, cell.isPath ? 'path' : '', cell.isStart ? 'start' : '', cell.isEnd ? 'end' : '']" v-on:click="act(cell.x, cell.y, cell)">{{ cell.walkable ? 0 : 1 }}</div>
 			</div>
 		</div>
 
