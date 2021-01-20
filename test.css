@@ -44,9 +44,17 @@ html {
 }
 
 .grid > div > .tile.start {
-	background-color: pink;
+	background-color: pink !important;
 }
 
 .grid > div > .tile.end {
-	background-color: #7adb7a;
+	background-color: #7adb7a !important;
+}
+
+.grid > div > .tile.start.end {
+	background-color: teal !important;
+}
+
+.grid > div > .tile.in-range:not(.wall):not(.path) {
+	background-color: beige;
 }
