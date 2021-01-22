@@ -78,6 +78,10 @@ html {
 	background-color: #ffef82;
 }
 
+.grid > div > .tile.in-range:not(.wall):not(.path):hover {
+	background-color: orange;
+}
+
 .grid > div > .tile.lava {
 	background-color: red;
 	animation: lava 2s infinite;

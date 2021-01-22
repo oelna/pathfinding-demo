@@ -15,8 +15,8 @@
 	<div id="app">
 		<div class="grid">
 			<div v-for="(row, index) in grid">
-				<div v-bind:id="'t-'+cell.y+'-'+cell.x" class="tile" v-for="(cell, index2) in row" v-bind:class="[cell.type, cell.isPath ? 'path' : '', cell.isStart ? 'start' : '', cell.isEnd ? 'end' : '', cell.isInRange ? 'in-range' : '', cell.isExit ? 'exit' : '']" v-on:click="act(cell.x, cell.y, cell)" v-bind:data-id="cell.uid">
-					<span class="character" v-for="(char, index3) in cell.characters" v-bind:data-id="char.uid"></span>
+				<div v-bind:id="'t-'+cell.y+'-'+cell.x" class="tile" v-for="(cell, index2) in row" v-bind:class="[cell.type, cell.isPath ? 'path' : '', cell.isStart ? 'start' : '', cell.isEnd ? 'end' : '', cell.isInRange ? 'in-range' : '', cell.isExit ? 'exit' : '']" v-bind:data-id="cell.uid" v-on:click="act(cell)">
+					<span class="character" v-for="(char, index3) in cell.characters" v-bind:data-id="char.uid" v-on:click="selectCharacter(char, $event)"></span>
 				</div>
 			</div>
 		</div>

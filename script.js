@@ -46,6 +46,55 @@ const Character = class {
 		this.uid = generateId();
 		this.health = 5;
 		this.range = 4;
+		this.tile = null;
+		this.selected = false;
+		this.moving = false;
+		this.target = null;
+		this.pastSteps = [];
+		this.futureSteps = [];
+	}
+
+	step (oldTile, newTile) {
+		oldTile.characters = []; // todo: filter by uid instead
+		newTile.characters.push(this);
+		this.tile = newTile;
+
+		// detect lava
+		if (newTile.type == 'lava') {
+			console.warn('standing in lava!');
+		}
+
+		// handle events
+		if (newTile.isExit) {
+			console.log('exiting level');
+			game.room += 1;
+			game.generateGrid(null, game.gridWidth, game.gridHeight);
+		}
+	}
+
+	move () {
+		this.moving = true;
+		const testInterval = setInterval(function (self) {
+
+			if (self.futureSteps.length > 0) {
+				const nextTileCoords = self.futureSteps.shift();
+				self.pastSteps.push(nextTileCoords);
+				const nextTile = game.getTile(nextTileCoords[0], nextTileCoords[1]);
+				console.log('moving to', nextTile);
+				self.step(self.tile, nextTile);
+
+				if (self.futureSteps.length == 0) {
+					console.log('no further steps');
+					clearInterval(testInterval);
+					game.clearRange();
+					game.clearPath();
+					game.highlightRange(self.tile, self.range);
+					self.moving = false;
+				}
+			}
+
+			return;
+		}, 500, this);
 	}
 };
 
@@ -67,11 +116,13 @@ const game = new Vue({
 		'start': null,
 		'end': null,
 		'moving': false,
-		'player': new Player()
+		'characters': [],
+		'player': null
 	},
 	'created': function () {
 
-		console.log(this.player.range);
+		this.player = new Player();
+		this.characters.push(this.player);
 
 		this.generateGrid(null, this.gridWidth, this.gridHeight);
 
@@ -141,20 +192,29 @@ const game = new Vue({
 			// set a player start position
 			// todo: do this somewhere else sensible
 			const startPosition = this.getFreeTile();
-			this.setStart(startPosition);
-			this.start.characters.push(this.player);
+			// this.setStart(startPosition);
+			this.player.tile = startPosition;
+			startPosition.characters.push(this.player);
 
 			// set an exit position
 			const exitPosition = this.getFreeTile();
 			this.setExit(exitPosition);
 		},
-		'makePath': function () {
-			if (this.start == null || this.end == null) {
+		'makePath': function (start, end) {
+			if (!start) start = this.start;
+			if (!end) start = this.end;
+
+			if (start == null || end == null) {
 				console.error('you must define a start and end point!');
 				return;
 			}
 
-			const path = this.findPath(this.start, this.end);
+			if (start.uid == end.uid) {
+				console.error('select different start and end positions!');
+				return;
+			}
+
+			const path = this.findPath(start, end);
 
 			if (path.length > 0) {
 				for (var i = 0; i < path.length; i++) {
@@ -164,6 +224,8 @@ const game = new Vue({
 			} else {
 				console.warn('could not calculate a path:', tile1, tile2);
 			}
+
+			return path;
 		},
 		'findPath': function (tile1, tile2) {
 			if (!tile1 || !tile2) {
@@ -310,10 +372,12 @@ const game = new Vue({
 			this.highlightRange(tile, this.player.range);
 		},
 		'setEnd': function (tile) {
+			/*
 			if (!tile.isInRange) {
 				console.warn('you must select a tile in range');
 				return;
 			}
+			*/
 
 			if (this.end) {
 				this.end.isEnd = false; // deactivate old end tile
@@ -328,7 +392,7 @@ const game = new Vue({
 			
 			this.makePath();
 		},
-		'act': function (x, y, tile) {
+		'act': function (tile) {
 
 			if (this.moving) {
 				console.warn('wait for the turn to finish!');
@@ -345,16 +409,41 @@ const game = new Vue({
 				return;
 			}
 
+			const selected = this.getSelectedCharacters();
+			for(const char of selected) {
+
+				if (!tile.isInRange) {
+					this.deselectCharacter(char);
+					return;
+				}
+
+				char.target = tile;
+				
+				const distance = this.getDistance(char.tile, tile);
+				console.log('distance is', distance);
+				
+				this.clearPath();
+				const path = this.makePath(char.tile, tile);
+
+				// start character animation steps
+				char.futureSteps = char.futureSteps.concat(path);
+				console.log(char);
+				char.move();
+			}
+
+			/*
 			if (this.start == null) {
 				// this.setStart(tile); // disable direct positioning for now
 				this.setEnd(tile);
 			} else {
 				this.setEnd(tile);
 			}
+			*/
 		},
 		'movePlayer': function () {
 			// todo: make this use a fixed path instead of always recalculating!
 
+			/*
 			if (this.start == null || this.end == null) {
 				console.error('can\'t move without valid start and end!');
 				return;
@@ -400,6 +489,40 @@ const game = new Vue({
 					}
 				}
 			}, 500, this);
+			*/
+		},
+		'getSelectedCharacters': function () {
+			const selected = this.characters.filter(function (char) {
+				return char.selected;
+			});
+
+			return selected;
+		},
+		'deselectCharacter': function (character, event) {
+			if (character.selected) {
+				character.selected = false;
+				character.target = null;
+				this.clearRange();
+				this.clearPath();
+			}
+		},
+		'selectCharacter': function (character, event) {
+			event.stopPropagation()
+
+			// deselect other characters
+			const selected = this.getSelectedCharacters();
+			for(const char of selected) {
+				char.selected = false;
+				// todo: clear individual ranges here in the future?
+			}
+
+			if (!character.selected) {
+				character.selected = true;
+				this.highlightRange(character.tile, character.range);
+			} else {
+				character.selected = false;
+				this.clearRange();
+			}
 		}
 	}
 });
