@@ -1,4 +1,10 @@
 
+@keyframes lava {
+	0% { background-color: orange; }
+	50% { background-color: red; }
+	100% { background-color: orange; }
+}
+
 html {
 	font: 150%/1.4 -system-ui, Helvetica, sans-serif;
 	color: #000;
@@ -16,6 +22,7 @@ html {
 .grid {
 	display: flex;
 	flex-direction: column;
+	
 }
 
 .grid > div {
@@ -24,11 +31,15 @@ html {
 }
 
 .grid > div > .tile {
-	width: 2em;
-	height: 2em;
+	width: 3vw;
+	height: 3vw;
 	border: 1px solid #999;
 	color: transparent;
 	background-color: #eee;
+	
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .grid > div > .tile.wall {
@@ -36,7 +47,7 @@ html {
 }
 
 .grid > div > .tile.path {
-	background-color: #ffef82;
+	background-color: rgb(144, 205, 255);
 }
 
 .grid > div > .tile.wall.path { /* probably not needed */
@@ -44,17 +55,39 @@ html {
 }
 
 .grid > div > .tile.start {
-	background-color: pink !important;
+	background-color: rgb(255, 144, 34) !important;
 }
 
 .grid > div > .tile.end {
 	background-color: #7adb7a !important;
 }
 
+.grid > div > .tile.exit {
+	background-color: #666 !important;
+}
+
 .grid > div > .tile.start.end {
 	background-color: teal !important;
 }
 
+.grid > div > .tile.exit.end {
+	background-color: #000 !important;
+}
+
 .grid > div > .tile.in-range:not(.wall):not(.path) {
-	background-color: beige;
+	background-color: #ffef82;
+}
+
+.grid > div > .tile.lava {
+	background-color: red;
+	animation: lava 2s infinite;
+}
+
+.grid > div > .tile .character {
+	display: block;
+	width: 1em;
+	height: 1em;
+
+	background: black;
+	border-radius: 100%;
 }

@@ -1,9 +1,18 @@
 'use strict';
 
+const generateId = function (size) {
+	if (!size) size = 10;
+	const id = [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+	return id;
+}
+
 const Tile = class {
 	constructor(params) {
+		this.uid = generateId();
+
 		this.walkable = (params && params.walkable !== undefined) ? !!params.walkable : true;
-		this.isLava = false;
+		this.isExit = false;
+		this.isEntrance = false;
 		this.y = (params && params.y !== undefined) ? params.y : null;
 		this.x = (params && params.x !== undefined) ? params.x : null;
 		this.type = (params && params.type !== undefined) ? params.type : 'ground';
@@ -13,11 +22,14 @@ const Tile = class {
 		this.isPath = null;
 		this.isInRange = null;
 
+		this.characters = [];
+		this.items = [];
 	}
 };
 
 const Item = class {
 	constructor(params) {
+		this.uid = generateId();
 		this.consumable = null;
 	}
 };
@@ -31,6 +43,7 @@ class Weapon extends Item {
 
 const Character = class {
 	constructor(params) {
+		this.uid = generateId();
 		this.health = 5;
 		this.range = 4;
 	}
@@ -45,8 +58,9 @@ class Player extends Character {
 const game = new Vue({
 	'el': '#app',
 	'data': {
-		'gridWidth': 9,
-		'gridHeight': 9,
+		'room': 1,
+		'gridWidth': 12,
+		'gridHeight': 12,
 		'grid': [],
 		'PFgrid': null,
 		'PFfinder': null,
@@ -60,13 +74,6 @@ const game = new Vue({
 		console.log(this.player.range);
 
 		this.generateGrid(null, this.gridWidth, this.gridHeight);
-
-		this.PFfinder = new PF.AStarFinder({
-			'allowDiagonal': false
-		});
-
-		const startPosition = this.getFreeTile();
-		this.setStart(startPosition);
 
 		console.log('init');
 	},
@@ -84,8 +91,8 @@ const game = new Vue({
 			return matrix;
 		},
 		'generateGrid': function (event, width, height) {
-			if (!width) width = 9;
-			if (!height) height = 9;
+			if (!width) width = this.gridWidth;
+			if (!height) height = this.gridHeight;
 
 			console.log('regenerate grid', width, height);
 
@@ -103,7 +110,6 @@ const game = new Vue({
 						'walkable': walkable,
 						'type': walkable ? 'ground' : 'wall'
 					});
-
 					row.push(cell);
 				}
 				rows.push(row);
@@ -121,7 +127,26 @@ const game = new Vue({
 			// this.PFgrid.setWalkableAt(0, 0, true);
 			// this.PFgrid.setWalkableAt(this.gridWidth-1, this.gridHeight-1, true);
 
-			this.clearPath();
+			// init finder algo
+			this.PFfinder = new PF.AStarFinder({
+				'allowDiagonal': false
+			});
+
+			this.clearAll();
+
+			let lava = this.getTile(3, 2);
+			lava.walkable = true;
+			lava.type = 'lava';
+
+			// set a player start position
+			// todo: do this somewhere else sensible
+			const startPosition = this.getFreeTile();
+			this.setStart(startPosition);
+			this.start.characters.push(this.player);
+
+			// set an exit position
+			const exitPosition = this.getFreeTile();
+			this.setExit(exitPosition);
 		},
 		'makePath': function () {
 			if (this.start == null || this.end == null) {
@@ -153,6 +178,25 @@ const game = new Vue({
 		},
 		'clearPath': function () {
 			if (!this.$el) return;
+
+			for (const row of this.grid) {
+				for (const cell of row) {
+					cell.isPath = false;
+				}
+			}
+		},
+		'clearRange': function () {
+			if (!this.$el) return;
+
+			for (const row of this.grid) {
+				for (const cell of row) {
+					cell.isInRange = false;
+				}
+			}
+		},
+		'clearAll': function () {
+			if (!this.$el) return;
+
 			this.start = null;
 			this.end = null; // todo: unify this into tile class
 
@@ -253,6 +297,11 @@ const game = new Vue({
 				part.isInRange = true;
 			}
 		},
+		'setExit': function (tile) {
+			console.log('selected exit tile', tile);
+			tile.isExit = true;
+			
+		},
 		'setStart': function (tile) {
 			console.log('selected start', tile);
 			tile.isStart = true;
@@ -264,6 +313,10 @@ const game = new Vue({
 			if (!tile.isInRange) {
 				console.warn('you must select a tile in range');
 				return;
+			}
+
+			if (this.end) {
+				this.end.isEnd = false; // deactivate old end tile
 			}
 
 			console.log('selected end', tile);
@@ -282,22 +335,25 @@ const game = new Vue({
 				return;
 			}
 
-			if (this.start !== null && this.end !== null) {
+			if (this.end !== null) {
 				// clear path and start new
 				this.clearPath();
 			}
+
 			if (!tile.walkable) {
 				console.warn('you must select a walkable tile');
 				return;
 			}
 
 			if (this.start == null) {
-				this.setStart(tile);
+				// this.setStart(tile); // disable direct positioning for now
+				this.setEnd(tile);
 			} else {
 				this.setEnd(tile);
 			}
 		},
 		'movePlayer': function () {
+			// todo: make this use a fixed path instead of always recalculating!
 
 			if (this.start == null || this.end == null) {
 				console.error('can\'t move without valid start and end!');
@@ -313,13 +369,20 @@ const game = new Vue({
 					self.start.isStart = false;
 					self.start.isPath = true;
 					self.start.isInRange = true;
+					self.start.characters = []; // todo: make this resilient!
 					
 					// set new start tile
 					self.start = self.getTile(path[1][0], path[1][1]);
 					self.start.isStart = true;
+					self.start.characters.push(this.player);
+
+					// detect lava
+					if (self.start.type == 'lava') {
+						console.warn('walked across lava!');
+					}
 				} else {
 					clearInterval(testInterval);
-					self.clearPath();
+					self.clearAll();
 
 					// set new start tile
 					self.start = self.getTile(path[0][0], path[0][1]);
@@ -328,6 +391,13 @@ const game = new Vue({
 
 					// end UI lock
 					self.moving = false;
+
+					// handle events
+					if (self.start.isExit) {
+						console.log('exiting level');
+						self.room += 1;
+						self.generateGrid(null, this.gridWidth, this.gridHeight);
+					}
 				}
 			}, 500, this);
 		}

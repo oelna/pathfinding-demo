@@ -15,13 +15,16 @@
 	<div id="app">
 		<div class="grid">
 			<div v-for="(row, index) in grid">
-				<div v-bind:id="'t-'+cell.y+'-'+cell.x" class="tile" v-for="(cell, index2) in row" v-bind:class="[cell.type, cell.isPath ? 'path' : '', cell.isStart ? 'start' : '', cell.isEnd ? 'end' : '', cell.isInRange ? 'in-range' : '']" v-on:click="act(cell.x, cell.y, cell)">{{ cell.walkable ? 0 : 1 }}</div>
+				<div v-bind:id="'t-'+cell.y+'-'+cell.x" class="tile" v-for="(cell, index2) in row" v-bind:class="[cell.type, cell.isPath ? 'path' : '', cell.isStart ? 'start' : '', cell.isEnd ? 'end' : '', cell.isInRange ? 'in-range' : '', cell.isExit ? 'exit' : '']" v-on:click="act(cell.x, cell.y, cell)" v-bind:data-id="cell.uid">
+					<span class="character" v-for="(char, index3) in cell.characters" v-bind:data-id="char.uid"></span>
+				</div>
 			</div>
 		</div>
 
 		<button v-on:click="generateGrid">Regenerate Grid</button>
 		<!--<button v-on:click="makePath">Find Path</button>-->
 		<button v-on:click="movePlayer">Move</button>
+		<span>{{ room }}</span>
 	</div>
 
 </body>
