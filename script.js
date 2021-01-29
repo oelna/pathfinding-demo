@@ -16,6 +16,9 @@ const Tile = class {
 		this.y = (params && params.y !== undefined) ? params.y : null;
 		this.x = (params && params.x !== undefined) ? params.x : null;
 		this.type = (params && params.type !== undefined) ? params.type : 'ground';
+		let randomVariant = Math.floor(Math.random() * 2) + 1;
+		this.variant = (Math.random() >= 0.8) ? (randomVariant+1) : 1;
+		// Math.floor(Math.random() * 6) + 1;
 		
 		this.isStart = null;
 		this.isEnd = null;
@@ -44,7 +47,10 @@ class Weapon extends Item {
 const Character = class {
 	constructor(params) {
 		this.uid = generateId();
-		this.health = 5;
+		this.baseHealth = 5;
+		this.calculatedHealth = 5;
+		this.currentHealth = 5;
+		this.dead = false;
 		this.range = 4;
 		this.tile = null;
 		this.selected = false;
@@ -52,20 +58,44 @@ const Character = class {
 		this.target = null;
 		this.pastSteps = [];
 		this.futureSteps = [];
+		this.moveInterval = null;
 	}
 
-	step (oldTile, newTile) {
-		oldTile.characters = []; // todo: filter by uid instead
-		newTile.characters.push(this);
-		this.tile = newTile;
+	step () {
+		const nextTileCoords = this.futureSteps.shift();
+		const nextTile = game.getTile(nextTileCoords[0], nextTileCoords[1]);
+		this.pastSteps.push(nextTileCoords);
+
+		// reset old tile
+		this.tile.isPath = false;
+		this.tile.isInRange = true;
+
+		// remove this character from the tile, but leave others
+		const self = this;
+		this.tile.characters = this.tile.characters.filter(function (char) {
+			return char.uid !== self.uid;
+		});
+
+		// prepare new tile
+		nextTile.characters.push(this);
+		this.tile = nextTile;
+		this.tile.isPath = false;
 
 		// detect lava
-		if (newTile.type == 'lava') {
-			console.warn('standing in lava!');
+		if (nextTile.type == 'lava') {
+			this.currentHealth -= 1;
+			console.warn('standing in lava! new health', this.currentHealth);
+
+			if (this.currentHealth <= 0) {
+				console.error('you died!');
+				this.futureSteps = [];
+				this.dead = true;
+				clearInterval(this.moveInterval);
+			}
 		}
 
 		// handle events
-		if (newTile.isExit) {
+		if (nextTile.isExit) {
 			console.log('exiting level');
 			game.room += 1;
 			game.generateGrid(null, game.gridWidth, game.gridHeight);
@@ -74,18 +104,16 @@ const Character = class {
 
 	move () {
 		this.moving = true;
-		const testInterval = setInterval(function (self) {
+		this.step(); // do the first step immediately
+
+		this.moveInterval = setInterval(function (self) {
 
 			if (self.futureSteps.length > 0) {
-				const nextTileCoords = self.futureSteps.shift();
-				self.pastSteps.push(nextTileCoords);
-				const nextTile = game.getTile(nextTileCoords[0], nextTileCoords[1]);
-				console.log('moving to', nextTile);
-				self.step(self.tile, nextTile);
+				self.step();
 
 				if (self.futureSteps.length == 0) {
 					console.log('no further steps');
-					clearInterval(testInterval);
+					clearInterval(self.moveInterval);
 					game.clearRange();
 					game.clearPath();
 					game.highlightRange(self.tile, self.range);
@@ -122,7 +150,7 @@ const game = new Vue({
 	'created': function () {
 
 		this.player = new Player();
-		this.characters.push(this.player);
+		this.characters.push(this.player, new Player(), new Player());
 
 		this.generateGrid(null, this.gridWidth, this.gridHeight);
 
@@ -191,10 +219,13 @@ const game = new Vue({
 
 			// set a player start position
 			// todo: do this somewhere else sensible
-			const startPosition = this.getFreeTile();
-			// this.setStart(startPosition);
-			this.player.tile = startPosition;
-			startPosition.characters.push(this.player);
+			for (const player of this.characters) {
+				const startPosition = this.getFreeTile();
+				// this.setStart(startPosition);
+				player.tile = startPosition;
+				startPosition.characters.push(player);
+			}
+			
 
 			// set an exit position
 			const exitPosition = this.getFreeTile();
@@ -425,6 +456,8 @@ const game = new Vue({
 				this.clearPath();
 				const path = this.makePath(char.tile, tile);
 
+				path.shift(); // remove the first path item, as it's the current player position
+
 				// start character animation steps
 				char.futureSteps = char.futureSteps.concat(path);
 				console.log(char);
@@ -507,17 +540,22 @@ const game = new Vue({
 			}
 		},
 		'selectCharacter': function (character, event) {
-			event.stopPropagation()
+			event.stopPropagation();
 
-			// deselect other characters
 			const selected = this.getSelectedCharacters();
 			for(const char of selected) {
-				char.selected = false;
 				// todo: clear individual ranges here in the future?
+				if (char.moving) {
+					console.log('please wait your turn');
+					return;
+				}
+
+				char.selected = false;
 			}
 
 			if (!character.selected) {
 				character.selected = true;
+				this.clearRange();
 				this.highlightRange(character.tile, character.range);
 			} else {
 				character.selected = false;
